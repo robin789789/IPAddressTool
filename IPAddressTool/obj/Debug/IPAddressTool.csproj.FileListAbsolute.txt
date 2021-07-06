@@ -1,0 +1,10 @@
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\bin\Debug\IPAddressTool.exe.config
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\bin\Debug\IPAddressTool.exe
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\bin\Debug\IPAddressTool.pdb
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.csprojAssemblyReference.cache
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.Form1.resources
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.Properties.Resources.resources
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.csproj.GenerateResource.cache
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.csproj.CoreCompileInputs.cache
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.exe
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.pdb
