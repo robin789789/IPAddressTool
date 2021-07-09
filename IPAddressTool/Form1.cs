@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Management;
+using System.Management.Automation;
+using System.Management.Automation.Runspaces;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -20,12 +24,13 @@ namespace IPAddressTool
         private string strCls = "Win32_NetworkAdapterConfiguration"; // WMI 名稱空間 ( Namespace )
         private string strNS = "root\\CIMV2"; // WMI 類別 (Class)
         private string strIndex; // 用來記錄網路介面卡 Index
-       
+
         private string projectNum = "";
         private const string robotAdapter = "Intel(R) I211 Gigabit Network Connection";
-        //private const string robotAdapter = "Realtek USB GbE Family Controller";
         private const string ccdAdapter = "Intel(R) Gigabit CT Desktop Adapter";
         private const string ccdAdapter2 = "Intel(R) Gigabit CT Desktop Adapter #2";
+
+        //private const string robotAdapter = "Realtek USB GbE Family Controller";
 
         private string strIP = "192.168.";
         private string strSubmask = "255.255.255.0";
@@ -33,14 +38,10 @@ namespace IPAddressTool
         private string strDNS1 = "0.0.0.0";
         private string strDNS2 = "0.0.0.0";
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            getAdtInfo();
-            nicQty.Text = "已連線的網路卡數量: " + comboBox1.Items.Count.ToString();
-        }
-
         private void getAdtInfo()
         {
+            comboBox1.Items.Clear();
+            AryLst.Clear();
             string strQry = "Select * from Win32_NetworkAdapterConfiguration where IPEnabled=True";
             ManagementObjectSearcher objSc = new ManagementObjectSearcher(strQry);
             foreach (ManagementObject objQry in objSc.Get())
@@ -99,66 +100,6 @@ namespace IPAddressTool
             objCls.InvokeMethod("ReleaseDHCPLease", null); // 釋放 IP
 
             objCls.InvokeMethod("RenewDHCPLease", null); // 重新取得 IP
-        }
-
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            strIndex = (AryLst[comboBox1.SelectedIndex]).ToString();
-        }
-
-        private void settingIP_Click(object sender, EventArgs e)
-        {
-            var intRobotIndex = comboBox1.Items.IndexOf(robotAdapter);
-            var intCCDIndex = comboBox1.Items.IndexOf(ccdAdapter);
-            var intCCDIndex2 = comboBox1.Items.IndexOf(ccdAdapter2);
-
-            DialogResult dialogResult = MessageBox.Show("是否進行IP自動配置?","",MessageBoxButtons.YesNo,MessageBoxIcon.Question);
-
-            if (dialogResult == DialogResult.Yes)
-            {
-                if (intRobotIndex != -1)
-                {
-                    SetNetCfg(strIP + "137." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intRobotIndex, 1500);
-                    DisableNet(robotAdapter);
-                    Thread.Sleep(500);
-                    EnableNet(robotAdapter);
-                }
-                Thread.Sleep(500);
-                if (intCCDIndex != -1)
-                {
-                    SetNetCfg(strIP + "138." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intCCDIndex, 1000);
-                    DisableNet(ccdAdapter);
-                    Thread.Sleep(500);
-                    EnableNet(ccdAdapter);
-                }
-                else if (intCCDIndex2 != -1)
-                {
-                    SetNetCfg(strIP + "138." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intCCDIndex2, 1000);
-                    DisableNet(ccdAdapter2);
-                    Thread.Sleep(500);
-                    EnableNet(ccdAdapter2);
-                }
-            }
-        }
-
-        private void settingDHCP_Click(object sender, EventArgs e)
-        {
-            SetAuto(); // 呼叫 SetAuto 程序 , 設定網路介面卡組態
-        }
-
-        private void projectNumeric_ValueChanged(object sender, EventArgs e)
-        {
-            projectNum = projectNumeric.Value.ToString();
-        }
-
-        private void btnEnable_Click(object sender, EventArgs e)
-        {
-            EnableNet(this.cmbAdapter.SelectedValue.ToString());
-        }
-
-        private void btnDisable_Click(object sender, EventArgs e)
-        {
-            DisableNet(this.cmbAdapter.SelectedValue.ToString());
         }
 
         public void NetWorkList()
@@ -275,9 +216,118 @@ namespace IPAddressTool
             NetWorkList();
         }
 
+        private string runPowershellScript(string script)// call powershell cmd
+        {
+            Runspace runSpace = RunspaceFactory.CreateRunspace();
+            runSpace.Open();
+            Pipeline pipeline = runSpace.CreatePipeline();
+            pipeline.Commands.AddScript(script);
+            pipeline.Commands.Add("Out-String");
+            Collection<PSObject> results = pipeline.Invoke();
+            runSpace.Close();
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (PSObject pSObject in results)
+            {
+                stringBuilder.AppendLine(pSObject.ToString());
+            }
+            return stringBuilder.ToString();
+        }
+
+        private void renameAdapter(string interfaceDescription, string newID)
+        {
+            var originalID = getAdapterName(interfaceDescription);
+            MessageBox.Show("更改名稱:" + originalID + " --> " + newID);
+            runPowershellScript("Rename-NetAdapter -Name \"" + originalID + "\" -NewName \"" + newID + "\"");
+        }
+
+        private string getAdapterName(string interfaceDescription)
+        {
+            return runPowershellScript("Get-NetAdapter -InterfaceDescription \"" + interfaceDescription + "\"|Format-list -Property Name").Trim().Replace("Name : ", "");
+        }
+
+        #region UI event
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            getAdtInfo();
+            nicQty.Text = "已連線的網路卡數量: " + comboBox1.Items.Count.ToString();
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            strIndex = (AryLst[comboBox1.SelectedIndex]).ToString();
+        }
+
+        private void settingIP_Click(object sender, EventArgs e)
+        {
+            var intRobotIndex = comboBox1.Items.IndexOf(robotAdapter);
+            var intCCDIndex = comboBox1.Items.IndexOf(ccdAdapter);
+            var intCCDIndex2 = comboBox1.Items.IndexOf(ccdAdapter2);
+
+            DialogResult dialogResult = MessageBox.Show("是否進行IP自動配置?", "", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (dialogResult == DialogResult.Yes)
+            {
+                if (intRobotIndex != -1)
+                {
+                    SetNetCfg(strIP + "137." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intRobotIndex, 1500);
+                    DisableNet(robotAdapter);
+                    Thread.Sleep(500);
+                    EnableNet(robotAdapter);
+                    renameAdapter(robotAdapter, "Robot");
+                }
+                Thread.Sleep(500);
+                if (intCCDIndex != -1)
+                {
+                    SetNetCfg(strIP + "138." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intCCDIndex, 1000);
+                    DisableNet(ccdAdapter);
+                    Thread.Sleep(500);
+                    EnableNet(ccdAdapter);
+                    renameAdapter(ccdAdapter, "CCD");
+                }
+                else if (intCCDIndex2 != -1)
+                {
+                    SetNetCfg(strIP + "138." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intCCDIndex2, 1000);
+                    DisableNet(ccdAdapter2);
+                    Thread.Sleep(500);
+                    EnableNet(ccdAdapter2);
+                    renameAdapter(ccdAdapter2, "CCD1");
+                }
+            }
+        }
+
+        private void settingDHCP_Click(object sender, EventArgs e)
+        {
+            SetAuto(); // 呼叫 SetAuto 程序 , 設定網路介面卡組態
+        }
+
+        private void projectNumeric_ValueChanged(object sender, EventArgs e)
+        {
+            projectNum = projectNumeric.Value.ToString();
+        }
+
+        private void btnEnable_Click(object sender, EventArgs e)
+        {
+            EnableNet(this.cmbAdapter.SelectedValue.ToString());
+        }
+
+        private void btnDisable_Click(object sender, EventArgs e)
+        {
+            DisableNet(this.cmbAdapter.SelectedValue.ToString());
+        }
+
         private void btnOpenSetting_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Process.Start("ncpa.cpl");
         }
+
+        private void btnRefresh_Click(object sender, EventArgs e)
+        {
+            getAdtInfo();
+            nicQty.Text = "已連線的網路卡數量: " + comboBox1.Items.Count.ToString();
+            NetWorkList();
+        }
+
+        #endregion UI event
     }
 }

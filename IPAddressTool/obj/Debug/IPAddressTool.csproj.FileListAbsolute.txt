@@ -8,3 +8,5 @@ C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.c
 C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.csproj.CoreCompileInputs.cache
 C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.exe
 C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.pdb
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\bin\Debug\System.Management.Automation.dll
+C:\Users\User\Source\Repos\IPAddressTool\IPAddressTool\obj\Debug\IPAddressTool.csproj.CopyComplete
