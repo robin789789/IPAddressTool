@@ -17,6 +17,7 @@ namespace IPAddressTool
         {
             InitializeComponent();
             NetWorkList();
+            GetNameAndID();
         }
 
         private ArrayList AryLst = new ArrayList(); // ArrayList 類別
@@ -37,6 +38,8 @@ namespace IPAddressTool
         private string strGateway = "0.0.0.0";
         private string strDNS1 = "0.0.0.0";
         private string strDNS2 = "0.0.0.0";
+
+        private Dictionary<int, string> adapterDeviceIDwithName = new Dictionary<int, string>();
 
         private void getAdtInfo()
         {
@@ -108,12 +111,22 @@ namespace IPAddressTool
             ManagementObjectSearcher searcher = new ManagementObjectSearcher(manage);
             ManagementObjectCollection collection = searcher.Get();
             List<string> netWorkList = new List<string>();
-
             foreach (ManagementObject obj in collection)
             {
                 netWorkList.Add(obj["Name"].ToString());
             }
             this.cmbAdapter.DataSource = netWorkList;
+        }
+
+        public void GetNameAndID()
+        {
+            string manage = "SELECT * From Win32_NetworkAdapter";
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(manage);
+            ManagementObjectCollection collection = searcher.Get();
+            foreach (ManagementObject obj in collection)
+            {
+                adapterDeviceIDwithName.Add(Convert.ToInt32(obj["DeviceID"]), obj["Name"].ToString());
+            }
         }
 
         public bool DisableNetWork(ManagementObject network)
@@ -157,6 +170,21 @@ namespace IPAddressTool
             return false;
         }
 
+        public bool NetWorkState(int deviceID)
+        {
+            string netState = "SELECT * From Win32_NetworkAdapter";
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(netState);
+            ManagementObjectCollection collection = searcher.Get();
+            foreach (ManagementObject manage in collection)
+            {
+                if (manage["DeviceID"].ToString() == deviceID.ToString())
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public ManagementObject NetWork(string networkname)
         {
             string netState = "SELECT * From Win32_NetworkAdapter";
@@ -167,6 +195,23 @@ namespace IPAddressTool
             foreach (ManagementObject manage in collection)
             {
                 if (manage["Name"].ToString() == networkname)
+                {
+                    return manage;
+                }
+            }
+            return null;
+        }
+
+        public ManagementObject NetWork(int deviceID)
+        {
+            string netState = "SELECT * From Win32_NetworkAdapter";
+
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(netState);
+            ManagementObjectCollection collection = searcher.Get();
+
+            foreach (ManagementObject manage in collection)
+            {
+                if (manage["DeviceID"].ToString() == deviceID.ToString())
                 {
                     return manage;
                 }
@@ -190,6 +235,27 @@ namespace IPAddressTool
             else
             {
                 MessageBox.Show("網路卡 " + netName + " 已開啟!");
+            }
+
+            NetWorkList();
+        }
+
+        public void EnableNet(int deviceID)
+        {
+            if (NetWorkState(deviceID))
+            {
+                if (!EnableNetWork(NetWork(deviceID)))
+                {
+                    MessageBox.Show("啟用網路卡 " + adapterDeviceIDwithName[deviceID] + " 失敗!");
+                }
+                else
+                {
+                    MessageBox.Show("啟用網路卡 " + adapterDeviceIDwithName[deviceID] + " 成功!");
+                }
+            }
+            else
+            {
+                MessageBox.Show("網路卡 " + adapterDeviceIDwithName[deviceID] + " 已開啟!");
             }
 
             NetWorkList();
@@ -275,8 +341,9 @@ namespace IPAddressTool
                     Thread.Sleep(500);
                     EnableNet(robotAdapter);
                     renameAdapter(robotAdapter, "Robot");
+                    Thread.Sleep(500);
                 }
-                Thread.Sleep(500);
+
                 if (intCCDIndex != -1)
                 {
                     SetNetCfg(strIP + "138." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intCCDIndex, 1000);
@@ -287,10 +354,18 @@ namespace IPAddressTool
                 }
                 else if (intCCDIndex2 != -1)
                 {
+                    int CCD2DeviceID = -1;
                     SetNetCfg(strIP + "138." + projectNum, strSubmask, strGateway, strDNS1, strDNS2, intCCDIndex2, 1000);
                     DisableNet(ccdAdapter2);
                     Thread.Sleep(500);
-                    EnableNet(ccdAdapter2);
+                    foreach (KeyValuePair<int, string> data in adapterDeviceIDwithName)
+                    {
+                        if (data.Value == ccdAdapter2)
+                        { CCD2DeviceID = data.Key; }
+                    }
+                    /*win32_wmiObject 抓取的網路卡是#2那張 被disable後 名稱會跟ccd重複，所以用ID去設定
+                    ps:Get-WmiObject -Class Win32_NetworkAdapter |Format-List -Property "Name"*/
+                    EnableNet(CCD2DeviceID);
                     renameAdapter(ccdAdapter2, "CCD1");
                 }
             }
